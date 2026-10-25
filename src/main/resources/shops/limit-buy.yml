@@ -79,6 +79,8 @@ items:
       - '[console] ia give %player% 物品 ${amount}'
   # Zaphkiel物品示范
   C:
+    # 安装对应插件并配置有效物品 ID 后启用
+    enabled: false
     material: 'Zaphkiel:example_sword'
     name: 'Zaphkiel物品'
     # 每日限购买
@@ -102,6 +104,8 @@ items:
       - '&e| &7全服剩余: ${limit-server}'
   # MM物品示范
   D:
+    # 安装 MythicMobs 并配置有效物品 ID 后启用
+    enabled: false
     material: 'MM:KingsCrown'
     name: 'MM物品'
     # 每日限购买

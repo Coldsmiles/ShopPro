@@ -33,11 +33,10 @@ class ZapItem(
 
     companion object : ItemLoader() {
         override val prefix: String = "Zaphkiel"
+        override val requiredPlugin: String = "Zaphkiel"
 
         override fun formSection(char: Char, section: ConfigurationSection, shop: Shop): Item {
-            if (Bukkit.getPluginManager().plugins.find { it.name.lowercase() == "Zaphkiel".lowercase() } == null) {
-                error("Zaphkiel Plugin not found")
-            }
+            checkDependency()
             val zapId = section.getString("material")!!.substring(prefix.length + 1)
             val item = Zaphkiel.api().getItemManager().getItem(zapId) ?: error("ZapItem $zapId not found")
             return ZapItem(item, section.toItemSetting(char, shop))

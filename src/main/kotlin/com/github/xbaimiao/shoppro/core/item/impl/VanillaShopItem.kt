@@ -7,6 +7,7 @@ import com.github.xbaimiao.shoppro.core.shop.Shop
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.Damageable
 import taboolib.platform.util.hasLore
 
 open class VanillaShopItem(itemSetting: ItemSetting) : ShopItem(itemSetting) {
@@ -18,7 +19,7 @@ open class VanillaShopItem(itemSetting: ItemSetting) : ShopItem(itemSetting) {
     }
 
     override fun equal(itemStack: ItemStack): Boolean {
-        if (data != 0 && itemStack.durability.toInt() != data) {
+        if (data != 0 && (itemStack.itemMeta as? Damageable)?.damage != data) {
             return false
         }
         return itemStack.type == material && !itemStack.hasLore()

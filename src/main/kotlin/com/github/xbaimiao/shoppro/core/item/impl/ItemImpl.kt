@@ -4,6 +4,7 @@ import com.github.xbaimiao.shoppro.core.item.Item
 import com.github.xbaimiao.shoppro.core.item.ItemLoader
 import com.github.xbaimiao.shoppro.core.shop.Shop
 import com.github.xbaimiao.shoppro.util.Util.replacePapi
+import com.github.xbaimiao.shoppro.util.parseShopMaterial
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.Player
@@ -35,11 +36,11 @@ class ItemImpl(
             head = materialString.substring(5)
         } else if (materialString.startsWith("IA:")) {
             materialString.split(":").let { strings ->
-                material = XMaterial.matchXMaterial(strings[1]).get().parseMaterial()!!
+                material = strings[1].parseShopMaterial()
                 custom = strings[2].toInt()
             }
         } else {
-            material = XMaterial.matchXMaterial(materialString).get().parseMaterial()!!
+            material = materialString.parseShopMaterial()
         }
     }
 

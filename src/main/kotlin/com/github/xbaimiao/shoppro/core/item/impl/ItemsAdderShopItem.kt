@@ -8,7 +8,7 @@ import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
-import taboolib.library.xseries.XMaterial
+import com.github.xbaimiao.shoppro.util.parseShopMaterial
 
 class ItemsAdderShopItem(
     iaMaterial: String,
@@ -21,7 +21,7 @@ class ItemsAdderShopItem(
 
     init {
         iaMaterial.split(":").let { strings ->
-            material = XMaterial.matchXMaterial(strings[1]).get().parseMaterial()!!
+            material = strings[1].parseShopMaterial()
             custom = strings[2].toInt()
         }
     }
@@ -61,7 +61,7 @@ class ItemsAdderShopItem(
         override fun parseToMaterial(section: ConfigurationSection): Material {
             val iaMaterial = section.getString("material")!!
             iaMaterial.split(":").let { strings ->
-                return XMaterial.matchXMaterial(strings[1]).get().parseMaterial()!!
+                return strings[1].parseShopMaterial()
             }
         }
 

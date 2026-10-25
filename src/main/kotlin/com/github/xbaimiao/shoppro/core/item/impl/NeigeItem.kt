@@ -35,11 +35,10 @@ class NeigeItem(
 
     companion object : ItemLoader() {
         override val prefix: String = "NeigeItems"
+        override val requiredPlugin: String = "NeigeItems"
 
         override fun formSection(char: Char, section: ConfigurationSection, shop: Shop): Item {
-            if (Bukkit.getPluginManager().plugins.find { it.name.lowercase() == "NeigeItems".lowercase() } == null) {
-                error("NeigeItems Plugin not found")
-            }
+            checkDependency()
             val neigeId = section.getString("material")!!.substring(prefix.length + 1)
             val item = ItemManager.getItem(neigeId) ?: error("NeigeItems $neigeId not found")
             return NeigeItem(item, section.toItemSetting(char, shop), neigeId)

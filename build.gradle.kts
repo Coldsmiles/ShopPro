@@ -3,72 +3,103 @@ import io.izzel.taboolib.gradle.*
 plugins {
     `java-library`
     `maven-publish`
-    id("io.izzel.taboolib") version "2.0.11"
-    id("org.jetbrains.kotlin.jvm") version "1.7.10"
+    id("io.izzel.taboolib") version "2.0.39"
+    id("org.jetbrains.kotlin.jvm") version "2.1.20"
 }
 
 taboolib {
-    description {
-        dependencies {
-            name("PlaceholderAPI").optional(true)
-            name("Vault").optional(true)
-            name("MMOItems").optional(true)
-            name("Zaphkiel").optional(true)
-            name("NeigeItems").optional(true)
-        }
-        contributors {
-            name("xbaimiao")
-        }
-        val bukkitNodes = bukkitNodes as MutableMap<Any, Any>
-        bukkitNodes["update-info"] = "支持1.12.2物品附加值"
-    }
     env {
-        install(NMS_UTIL, UI)
-        install(EXPANSION_COMMAND_HELPER, BUKKIT_ALL)
-        install(DATABASE, CHAT, CONFIGURATION, LANG, NMS, KETHER)
+        install(Bukkit, BukkitHook, BukkitUtil, BukkitUI, CommandHelper)
+        install(Database, MinecraftChat, Basic, I18n, Kether)
     }
     version {
-        taboolib = "6.1.1-beta17"
+        taboolib = "6.2.4-c90a237"
+        // The generated descriptor unconditionally declares Folia support.
+        skipPlatformFile = true
     }
-//    relocate("kotlin", "libs.kotlin171")
-    relocate("com.xbaimiao.ktor", "com.github.xbaimiao.shoppro.stat")
+    // Bundle both sides of TabooLib's private SLF4J API before database initialization.
+    relocate("org.slf4j.", "org.slf4j_2_0_8.")
 }
 
 repositories {
+    clear()
     mavenCentral()
-    maven("https://maven.xbaimiao.com/repository/maven-public/")
-    maven("https://r.irepo.space/maven/")
+    maven("https://repo.tabooproject.org/repository/releases/") {
+        content {
+            includeGroup("io.izzel.taboolib")
+            includeGroupByRegex("org\\.tabooproject.*")
+        }
+    }
+    maven("https://repo.papermc.io/repository/maven-public/") {
+        content {
+            includeGroup("io.papermc.paper")
+            includeGroup("net.md-5")
+        }
+    }
+    maven("https://libraries.minecraft.net/") {
+        content { includeGroup("com.mojang") }
+    }
+    maven("https://maven.xbaimiao.com/repository/maven-public/") {
+        content { includeGroup("public") }
+    }
+    maven("https://r.irepo.space/maven/") {
+        content { includeGroup("pers.neige.neigeitems") }
+    }
 }
 
 dependencies {
-    compileOnly("com.mojang:authlib:3.16.29")
-    compileOnly("ink.ptms:nms-all:1.0.0")
-    compileOnly("public:MythicMobs:4.14.1")
+    add("taboo", "org.slf4j:slf4j-api:2.0.8") { isTransitive = false }
+    add("taboo", "org.slf4j:slf4j-jdk14:2.0.8") { isTransitive = false }
+
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("public:papi:1.0.0")
     compileOnly("public:vault:1.0.0")
     compileOnly("public:points:1.0.0")
-    compileOnly("ink.ptms.core:v11902:11902-minimize:mapped")
-    compileOnly("ink.ptms.core:v11902:11902-minimize:universal")
     compileOnly("public:Zaphkiel:1.0.0")
     compileOnly("pers.neige.neigeitems:NeigeItems:1.15.113")
     compileOnly("public:MMOItems:6.9.4")
-//    taboo(kotlin("stdlib"))
     compileOnly(fileTree("libs"))
+
+    testImplementation("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.101.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.0.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.2")
+}
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+}
+
+kotlin {
+    jvmToolchain(21)
+    compilerOptions {
+        freeCompilerArgs.add("-Xjvm-default=all")
+    }
 }
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
+    options.release.set(21)
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "1.8"
-        freeCompilerArgs = listOf("-Xjvm-default=all")
+tasks.processResources {
+    inputs.property("version", project.version)
+    filesMatching("plugin.yml") {
+        expand("version" to project.version)
     }
 }
 
-configure<JavaPluginConvention> {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+tasks.jar {
+    // TabooLib relocates classes but does not rewrite service descriptor contents.
+    // The relocated service descriptor is supplied by this project's resources.
+    exclude("META-INF/services/org.slf4j.spi.SLF4JServiceProvider")
+    exclude("META-INF/versions/**/module-info.class")
+}
+
+tasks.test {
+    dependsOn(tasks.jar, "taboolibMainTask")
+    inputs.file(tasks.jar.flatMap { it.archiveFile }).withPropertyName("pluginArtifact")
+    systemProperty("shoppro.artifact", tasks.jar.get().archiveFile.get().asFile.absolutePath)
+    useJUnitPlatform()
 }
 

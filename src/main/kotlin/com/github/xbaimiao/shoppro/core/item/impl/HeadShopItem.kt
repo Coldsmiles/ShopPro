@@ -8,8 +8,9 @@ import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.Damageable
 import taboolib.library.xseries.XMaterial
-import taboolib.library.xseries.parseToMaterial
+import com.github.xbaimiao.shoppro.util.parseShopMaterial
 import java.util.*
 
 class HeadShopItem(
@@ -34,7 +35,7 @@ class HeadShopItem(
     }
 
     override fun equal(itemStack: ItemStack): Boolean {
-        if (data != 0 && itemStack.durability.toInt() != data) {
+        if (data != 0 && (itemStack.itemMeta as? Damageable)?.damage != data) {
             return false
         }
         return itemStack.itemMeta?.hasLore() == false && itemStack.type == item
@@ -62,7 +63,7 @@ class HeadShopItem(
         }
 
         override fun parseToMaterial(section: ConfigurationSection): Material {
-            return section.getString("item")?.parseToMaterial() ?: Material.BARRIER
+            return section.getString("item")?.parseShopMaterial() ?: Material.BARRIER
         }
 
     }

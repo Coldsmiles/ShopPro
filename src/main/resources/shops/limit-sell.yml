@@ -100,6 +100,8 @@ items:
       - '&e· &7您当前已出售: ${limit-player} &8| &7全服剩余: ${limit-server}'
       - '&x&F&5&A&5&0&E&M &x&E&E&A&2&1&C&M &x&E&7&9&F&2&A&M &x&E&0&9&C&3&8&M &x&D&9&9&9&4&6&M &x&D&2&9&6&5&4&M &x&C&B&9&3&6&2&M  &x&C&4&9&C&7&0&M  &x&B&D&9&F&7&E&M  &x&B&D&9&F&7&E&M  &x&B&6&A&2&8&C&M  &x&A&F&A&5&9&A&M  &M  &M  &x&A&F&A&5&9&A&M  &M  &M  &x&B&6&A&2&8&C&M  &x&B&D&9&F&7&E&M  &x&C&4&9&C&7&0&M  &x&C&B&9&9&6&2&M  &x&D&2&9&6&5&4&M  &x&D&9&9&3&4&6&M &x&E&0&9&0&3&8&M &x&E&7&8&D&2&A&M &x&E&E&8&A&1&C&M &x&F&5&8&7&0&E&M &x&F&C&8&4&0&0&M '
   D:
+    # 安装 MMOItems 并配置有效物品 ID 后启用
+    enabled: false
     material: 'MMO_ITEM:SWORD:新手剑'
     name: 'MMO_ITEM物品名'
     # 每日限出售

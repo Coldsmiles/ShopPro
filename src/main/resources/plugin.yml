@@ -1,0 +1,15 @@
+name: ShopPro
+main: com.github.xbaimiao.shoppro.taboolib.platform.BukkitPlugin
+version: '${version}'
+api-version: '1.21.11'
+description: Shop plugin for Paper 1.21.11
+authors: [xbaimiao]
+folia-supported: false
+softdepend:
+  - PlaceholderAPI
+  - Vault
+  - MMOItems
+  - Zaphkiel
+  - NeigeItems
+  - MythicMobs
+  - PlayerPoints

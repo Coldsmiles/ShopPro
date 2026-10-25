@@ -41,11 +41,10 @@ class MMOItem(
     companion object : ItemLoader() {
 
         override val prefix: String = "MMO_ITEM"
+        override val requiredPlugin: String = "MMOItems"
 
         override fun formSection(char: Char, section: ConfigurationSection, shop: Shop): Item {
-            if (Bukkit.getPluginManager().getPlugin("MMOItems") == null) {
-                error("MMOItems Plugin not found")
-            }
+            checkDependency()
             val mmoitemsData = section.getString("material")!!.substring(prefix.length + 1).split(":")
             val type = Type.get(mmoitemsData[0]) ?: error("MMOItems ${mmoitemsData[0]} not is type")
             val id = mmoitemsData[1]

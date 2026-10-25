@@ -7,6 +7,7 @@ import com.github.xbaimiao.shoppro.core.database.LimitData
 import com.github.xbaimiao.shoppro.core.item.Item
 import com.github.xbaimiao.shoppro.core.item.KetherCondition
 import com.github.xbaimiao.shoppro.core.item.ShopItem
+import com.github.xbaimiao.shoppro.core.item.MissingItemPluginException
 import com.github.xbaimiao.shoppro.util.Util.howManyItems
 import com.github.xbaimiao.shoppro.util.Util.replacePapi
 import org.bukkit.Bukkit
@@ -48,23 +49,22 @@ class ShopImpl(private val configuration: Configuration) : Shop() {
 
     init {
         val section = configuration.getConfigurationSection("items")!!
-        a@ for (key in section.getKeys(false)) {
+        for (key in section.getKeys(false)) {
+            if (!section.getBoolean("$key.enabled", true)) {
+                continue
+            }
             try {
                 val subSection = section.getConfigurationSection(key)!!
                 if (section.getBoolean("$key.is-commodity", true)) {
                     val materialString = section.getString("$key.material")!!
-                    for (loader in ShopPro.itemLoaderManager.itemLoaders) {
-                        if (loader.prefix != null) {
-                            if (materialString.startsWith(loader.prefix!!)) {
-                                items.add(loader.formSection(key[0], subSection, this))
-                                continue@a
-                            }
-                        }
-                    }
-                    items.add(ShopPro.itemLoaderManager.getVanillaShop().formSection(key[0], subSection, this))
+                    val loader = ShopPro.itemLoaderManager.findLoader(materialString)
+                    loader.checkDependency()
+                    items.add(loader.formSection(key[0], subSection, this))
                 } else {
                     items.add(ShopPro.itemLoaderManager.getItemImpl().formSection(key[0], subSection, this))
                 }
+            } catch (e: MissingItemPluginException) {
+                Bukkit.getLogger().warning("[ShopPro] 商店 ${getName()} 的商品 $key 已跳过：未启用 ${e.pluginName}，请安装该插件或移除此商品配置。")
             } catch (e: Throwable) {
                 info("在加载Shop: ${getName()} 时,物品: $key 加载出现异常,跳过加载,错误信息如下")
                 e.printStackTrace()

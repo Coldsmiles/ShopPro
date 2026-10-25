@@ -21,4 +21,9 @@ class ItemLoaderManager {
 
     fun getItemImpl(): ItemLoader = ItemImpl.Companion
 
+    fun findLoader(material: String): ItemLoader {
+        return itemLoaders.firstOrNull { it.prefix?.let { prefix -> material.startsWith("$prefix:") } == true }
+            ?: getVanillaShop()
+    }
+
 }

@@ -1,7 +1,7 @@
 package com.github.xbaimiao.shoppro.util
 
-import com.mojang.authlib.GameProfile
-import com.mojang.authlib.properties.Property
+import com.destroystokyo.paper.profile.ProfileProperty
+import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.Color
 import org.bukkit.Material
@@ -10,11 +10,8 @@ import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.EntityType
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.*
-import org.bukkit.potion.PotionData
 import org.bukkit.potion.PotionEffect
-import taboolib.library.reflex.Reflex.Companion.getProperty
-import taboolib.library.reflex.Reflex.Companion.invokeMethod
-import taboolib.library.reflex.Reflex.Companion.setProperty
+import org.bukkit.potion.PotionType
 import taboolib.library.xseries.XMaterial
 import taboolib.module.chat.colored
 import taboolib.platform.util.isAir
@@ -125,7 +122,7 @@ open class ItemBuilder {
     /**
      * 基础药水效果
      */
-    var potionData: PotionData? = null
+    var potionType: PotionType? = null
 
     /**
      * 生物类型
@@ -180,19 +177,10 @@ open class ItemBuilder {
     }
 
     open fun getSkinValue(skull: ItemMeta): SkullTexture? {
-        var profile: GameProfile? = null
-        try {
-            profile = skull.getProperty("profile")
-        } catch (ignored: Exception) {
-        }
-        if (profile != null && !profile.properties["textures"].isEmpty()) {
-            for (property in profile.properties["textures"]) {
-                if (property.value.isNotEmpty()) {
-                    return SkullTexture(property.value, profile.id)
-                }
-            }
-        }
-        return null
+        val profile = (skull as? SkullMeta)?.playerProfile ?: return null
+        val texture = profile.properties.firstOrNull { it.name == "textures" && it.value.isNotEmpty() }
+            ?: return null
+        return SkullTexture(texture.value, profile.id)
     }
 
     /**
@@ -223,15 +211,13 @@ open class ItemBuilder {
     open fun build(): ItemStack {
         val itemStack = ItemStack(material)
         itemStack.amount = amount
-        if (damage != 0) {
-            itemStack.durability = damage.toShort()
+        val itemMeta = originMeta?.clone() ?: itemStack.itemMeta ?: return itemStack
+        if (itemMeta is Damageable) {
+            itemMeta.damage = damage
         }
-        val itemMeta = originMeta ?: itemStack.itemMeta ?: return itemStack
         itemMeta.setDisplayName(name)
         itemMeta.lore = lore
-        kotlin.runCatching {
-            itemMeta.addItemFlags(*flags.map { org.bukkit.inventory.ItemFlag.valueOf(it.name) }.toTypedArray())
-        }
+        itemMeta.addItemFlags(*flags.mapNotNull { it.toBukkit() }.toTypedArray())
         if (itemMeta is EnchantmentStorageMeta) {
             enchants.forEach { (e, lvl) -> itemMeta.addStoredEnchant(e, lvl, true) }
         } else {
@@ -239,53 +225,36 @@ open class ItemBuilder {
         }
         when (itemMeta) {
             is LeatherArmorMeta -> {
-                itemMeta.setColor(color)
+                color?.let { itemMeta.setColor(it) }
             }
 
             is PotionMeta -> {
                 itemMeta.color = color
                 potions.forEach { itemMeta.addCustomEffect(it, true) }
-                if (potionData != null) {
-                    itemMeta.basePotionData = potionData!!
-                }
+                potionType?.let { itemMeta.basePotionType = it }
             }
 
             is SkullMeta -> {
-                if (skullOwner != null) {
-                    itemMeta.owner = skullOwner
-                }
                 if (skullTexture != null) {
-                    itemMeta.setProperty("profile", GameProfile(skullTexture!!.uuid, "test").also {
-                        it.properties.put("textures", Property("textures", skullTexture!!.textures))
-                    })
+                    val texture = skullTexture!!
+                    itemMeta.playerProfile = Bukkit.createProfile(texture.uuid ?: UUID.randomUUID()).also {
+                        it.setProperty(ProfileProperty("textures", texture.textures))
+                    }
+                } else if (skullOwner != null && itemMeta.owningPlayer?.name != skullOwner) {
+                    itemMeta.playerProfile = Bukkit.createProfile(skullOwner!!)
                 }
             }
         }
-        try {
-            itemMeta.isUnbreakable = isUnbreakable
-        } catch (ex: NoSuchMethodError) {
-            try {
-                itemMeta.invokeMethod<Any>("spigot")!!.invokeMethod<Any>("setUnbreakable", isUnbreakable)
-            } catch (ignored: NoSuchMethodException) {
-            }
+        itemMeta.isUnbreakable = isUnbreakable
+        if (spawnType != null && itemMeta is SpawnEggMeta) {
+            itemMeta.customSpawnedType = spawnType
         }
-        try {
-            if (spawnType != null && itemMeta is SpawnEggMeta) {
-                itemMeta.spawnedType = spawnType
-            }
-        } catch (ignored: NoClassDefFoundError) {
+        if (patterns.isNotEmpty() && itemMeta is BannerMeta) {
+            itemMeta.patterns = patterns
         }
-        try {
-            if (patterns.isNotEmpty() && itemMeta is BannerMeta) {
-                patterns.forEach { itemMeta.addPattern(it) }
-            }
-        } catch (ignored: NoClassDefFoundError) {
-        }
-        try {
-            if (customModelData != -1) {
-                itemMeta.invokeMethod<Void>("setCustomModelData", customModelData)
-            }
-        } catch (ignored: NoSuchMethodException) {
+        // Preserve the full modern component when the legacy integer has not changed.
+        if (customModelData != -1 && (!itemMeta.hasCustomModelData() || itemMeta.customModelData != customModelData)) {
+            itemMeta.setCustomModelData(customModelData)
         }
         itemStack.itemMeta = itemMeta
         finishing(itemStack)
@@ -303,13 +272,13 @@ open class ItemBuilder {
     constructor(item: ItemStack) {
         material = item.type
         amount = item.amount
-        damage = item.durability.toInt()
         // 如果物品没有 ItemMeta 则不进行后续操作
         val itemMeta = item.itemMeta ?: return
+        damage = (itemMeta as? Damageable)?.damage ?: 0
         originMeta = itemMeta
-        name = itemMeta.displayName
+        name = itemMeta.displayName.takeIf { itemMeta.hasDisplayName() }
         lore += itemMeta.lore ?: emptyList()
-        flags += kotlin.runCatching { itemMeta.itemFlags.map { ItemFlag.valueOf(it.name) } }.getOrElse { emptyList() }
+        flags += itemMeta.itemFlags.mapNotNull { runCatching { ItemFlag.valueOf(it.name) }.getOrNull() }
         enchants += if (itemMeta is EnchantmentStorageMeta) {
             itemMeta.storedEnchants
         } else {
@@ -323,41 +292,18 @@ open class ItemBuilder {
             is PotionMeta -> {
                 color = itemMeta.color
                 potions += itemMeta.customEffects
-                potionData = itemMeta.basePotionData
+                potionType = itemMeta.basePotionType
             }
 
             is SkullMeta -> {
-                if (itemMeta.owner != null) {
-                    skullOwner = itemMeta.owner
-                }
-                skullTexture = getSkinValue(itemMeta)
+                // originMeta retains the full profile, including signatures and names.
+                skullOwner = itemMeta.owningPlayer?.name
             }
         }
-        try {
-            customModelData = itemMeta.getProperty<Int>("customModelData") ?: -1
-        } catch (ignored: NoSuchFieldException) {
-        }
-        try {
-            isUnbreakable = itemMeta.isUnbreakable
-        } catch (ex: NoSuchMethodError) {
-            try {
-                isUnbreakable = itemMeta.invokeMethod<Any>("spigot")!!.invokeMethod<Boolean>("isUnbreakable") ?: false
-            } catch (ignored: NoSuchMethodException) {
-            }
-        }
-        try {
-            if (itemMeta is SpawnEggMeta && itemMeta.spawnedType != null) {
-                spawnType = itemMeta.spawnedType
-            }
-        } catch (ignored: NoClassDefFoundError) {
-        } catch (ignored: UnsupportedOperationException) {
-
-        }
-        try {
-            if (itemMeta is BannerMeta && itemMeta.patterns.isNotEmpty()) {
-                patterns += itemMeta.patterns
-            }
-        } catch (ignored: NoClassDefFoundError) {
+        customModelData = if (itemMeta.hasCustomModelData()) itemMeta.customModelData else -1
+        isUnbreakable = itemMeta.isUnbreakable
+        if (itemMeta is BannerMeta) {
+            patterns += itemMeta.patterns
         }
     }
 }
